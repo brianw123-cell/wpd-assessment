@@ -15,9 +15,9 @@ export default function LandingPage() {
           className="font-semibold leading-[1.1] tracking-[-0.02em] mb-6"
           style={{ fontSize: "clamp(34px, 5.5vw, 52px)", color: "var(--navy)" }}
         >
-          AI readiness for
+          How ready is your
           <br />
-          contracting businesses.
+          business for AI?
         </h1>
 
         <p
@@ -29,8 +29,8 @@ export default function LandingPage() {
         </p>
 
         <p className="text-sm mb-10" style={{ color: "var(--text-muted)" }}>
-          Free. No card required. Built for owners of roofing, solar, HVAC,
-          plumbing, electrical, and general contracting businesses.
+          Free. Anonymous until the last step — you only share your email if
+          you want the full breakdown.
         </p>
 
         <Link

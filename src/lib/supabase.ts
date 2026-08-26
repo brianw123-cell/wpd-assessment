@@ -9,10 +9,11 @@ if (!supabaseUrl || !supabaseAnonKey) {
   );
 }
 
-// This assessment shares a Supabase instance with SCTCA (see spec §6).
-// The wpd_assessments table is isolated by name (wpd_ prefix) and by RLS:
+// This app has its own dedicated Supabase project (wpd-assessment).
+// The `assessments` table lives in the public schema.
+// RLS rules:
 // - anon can INSERT (start a new assessment)
-// - anon can UPDATE any row (but they need the row's UUID, which is only issued
+// - anon can UPDATE any row (they need the row's UUID, which is only issued
 //   to the browser that created it — practically unguessable)
 // - anon CANNOT SELECT (protects captured lead data)
 // - authenticated users (Brian, via /admin) CAN SELECT

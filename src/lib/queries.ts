@@ -29,7 +29,7 @@ export async function startAssessment(
   if (existingRowId) return existingRowId;
 
   const { data, error } = await supabase
-    .from('wpd_assessments')
+    .from('assessments')
     .insert({
       session_id: sessionId,
       answers: answersToJson(answers),
@@ -55,7 +55,7 @@ export async function saveProgress(answers: AnswersMap): Promise<void> {
   const rowId = getRowId();
   if (!rowId) return;
   const { error } = await supabase
-    .from('wpd_assessments')
+    .from('assessments')
     .update({ answers: answersToJson(answers) })
     .eq('id', rowId);
   if (error) console.error('saveProgress failed:', error);
@@ -75,7 +75,7 @@ export async function submitAssessment(args: {
 
   const { lead, result, answers } = args;
   const { error } = await supabase
-    .from('wpd_assessments')
+    .from('assessments')
     .update({
       completed_at: new Date().toISOString(),
       name: lead.name,
@@ -104,7 +104,7 @@ export async function submitAssessment(args: {
 /** Admin-only: load all submissions ordered by created_at desc. */
 export async function listSubmissions() {
   const { data, error } = await supabase
-    .from('wpd_assessments')
+    .from('assessments')
     .select(
       'id, session_id, created_at, completed_at, name, email, company, role, total_score, profile, dim_a, dim_b, dim_c, dim_d, dim_e, handoff_task'
     )

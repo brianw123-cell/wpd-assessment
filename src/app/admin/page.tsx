@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import { listSubmissions } from "@/lib/queries";
 import { PROFILES } from "@/lib/scoring";
+import AdminStats from "@/components/AdminStats";
 
 type SortKey = "created_at" | "total_score" | "company" | "profile";
 
@@ -157,9 +158,10 @@ export default function AdminPage() {
 
       <main id="main" className="flex-1 px-6 py-8 overflow-x-auto">
         <div className="max-w-7xl mx-auto">
+          <AdminStats rows={sortedRows} />
+
           <p className="text-sm mb-4" style={{ color: "var(--text-muted)" }}>
-            {sortedRows.length} submissions total ({sortedRows.filter((r) => r.completed_at).length}{" "}
-            completed, {sortedRows.filter((r) => !r.completed_at).length} partial). Click any column header to sort.
+            All submissions. Click any column header to sort.
           </p>
 
           <div
