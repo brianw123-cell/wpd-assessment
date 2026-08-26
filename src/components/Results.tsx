@@ -87,7 +87,7 @@ export default function Results({ result }: { result: Result }) {
           </p>
         </div>
 
-        {/* Dimension breakdown as a radar/spider chart */}
+        {/* Dimension breakdown */}
         <div
           className="rounded-2xl px-5 py-6 sm:px-7 sm:py-7"
           style={{
@@ -100,24 +100,39 @@ export default function Results({ result }: { result: Result }) {
             className="text-[11px] tracking-[0.18em] font-semibold uppercase mb-4"
             style={{ color: "var(--accent)" }}
           >
-            Your shape
+            Your score by dimension
           </p>
-          <div className="flex items-center gap-4">
-            <div className="flex-1 min-w-0">
-              <RadarChart dimensions={dimensions} />
-            </div>
-            <ul className="flex flex-col gap-2 shrink-0">
-              {dimensions.map((d) => (
-                <li key={d.key} className="text-[12px]" style={{ color: "var(--text-mid)" }}>
-                  <span className="tabular-nums font-semibold" style={{ color: "var(--navy)" }}>
-                    {d.score}
+          <ul className="flex flex-col gap-3">
+            {dimensions.map((d) => (
+              <li key={d.key}>
+                <div className="flex items-baseline justify-between mb-1">
+                  <span className="text-[13px] font-medium" style={{ color: "var(--text)" }}>
+                    {d.label}
                   </span>
-                  <span style={{ color: "var(--text-muted)" }}> /9 </span>
-                  <span className="ml-1">{d.label}</span>
-                </li>
-              ))}
-            </ul>
-          </div>
+                  <span className="text-[13px] tabular-nums" style={{ color: "var(--text-muted)" }}>
+                    {d.score} / 9
+                  </span>
+                </div>
+                <div
+                  className="h-1.5 w-full rounded-full overflow-hidden"
+                  style={{ background: "var(--border-soft)" }}
+                  role="progressbar"
+                  aria-valuenow={d.score}
+                  aria-valuemin={0}
+                  aria-valuemax={9}
+                  aria-label={`${d.label} score`}
+                >
+                  <div
+                    className="h-full rounded-full transition-all"
+                    style={{
+                      width: `${(d.score / 9) * 100}%`,
+                      background: barColor(d.score),
+                    }}
+                  />
+                </div>
+              </li>
+            ))}
+          </ul>
         </div>
       </div>
 
@@ -204,89 +219,4 @@ function barColor(score: number): string {
   if (score <= 3) return "#c67b5c";
   if (score <= 6) return "var(--accent-soft)";
   return "var(--success)";
-}
-
-/**
- * Radar chart for the five dimensions, each 0..9 on its own spoke.
- * Inline SVG, no chart library. Draws three concentric guide rings, five
- * axes, and the filled polygon of the score with a dot at each vertex.
- */
-function RadarChart({
-  dimensions,
-}: {
-  dimensions: Array<{ key: "A" | "B" | "C" | "D" | "E"; label: string; score: number }>;
-}) {
-  const size = 200;
-  const cx = size / 2;
-  const cy = size / 2;
-  const r = size / 2 - 22;
-  const n = dimensions.length;
-  const maxScore = 9;
-
-  // Axis endpoint for a given index (top = index 0)
-  const axisPoint = (i: number, magnitude: number) => {
-    const angle = -Math.PI / 2 + (i / n) * Math.PI * 2;
-    return {
-      x: cx + Math.cos(angle) * r * magnitude,
-      y: cy + Math.sin(angle) * r * magnitude,
-    };
-  };
-
-  // Ring polygons at 1/3, 2/3, and full
-  const ring = (mag: number) =>
-    dimensions.map((_, i) => {
-      const p = axisPoint(i, mag);
-      return `${p.x.toFixed(1)},${p.y.toFixed(1)}`;
-    }).join(" ");
-
-  // Score polygon vertices
-  const vertices = dimensions.map((d, i) => axisPoint(i, Math.max(0, d.score / maxScore)));
-  const scorePath = vertices.map((p) => `${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(" ");
-
-  // Label positions just outside each axis
-  const labelPoints = dimensions.map((d, i) => {
-    const p = axisPoint(i, 1.14);
-    return { ...d, x: p.x, y: p.y };
-  });
-
-  return (
-    <svg viewBox={`0 0 ${size} ${size}`} className="w-full h-auto max-w-[220px]" role="img" aria-label="Your score across the five dimensions">
-      {/* Concentric guide rings */}
-      {[1 / 3, 2 / 3, 1].map((mag) => (
-        <polygon
-          key={mag}
-          points={ring(mag)}
-          fill="none"
-          stroke="var(--border-soft)"
-          strokeWidth={1}
-        />
-      ))}
-      {/* Axes */}
-      {dimensions.map((_, i) => {
-        const p = axisPoint(i, 1);
-        return <line key={i} x1={cx} y1={cy} x2={p.x} y2={p.y} stroke="var(--border-soft)" strokeWidth={1} />;
-      })}
-      {/* Score polygon fill + stroke */}
-      <polygon points={scorePath} fill="rgba(46,93,133,0.22)" stroke="var(--accent)" strokeWidth={2} strokeLinejoin="round" />
-      {/* Vertex dots */}
-      {vertices.map((p, i) => (
-        <circle key={i} cx={p.x} cy={p.y} r={3.5} fill="var(--navy)" stroke="#f5f3ef" strokeWidth={1.5} />
-      ))}
-      {/* Compact labels: use the dimension letter, positioned just outside the ring */}
-      {labelPoints.map((d) => (
-        <text
-          key={d.key}
-          x={d.x}
-          y={d.y}
-          textAnchor="middle"
-          dominantBaseline="middle"
-          fontSize={10}
-          fontWeight={600}
-          fill="var(--text-mid)"
-        >
-          {d.key}
-        </text>
-      ))}
-    </svg>
-  );
 }

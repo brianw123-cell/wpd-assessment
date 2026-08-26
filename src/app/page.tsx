@@ -27,7 +27,7 @@ export default function LandingPage() {
               A quick honest read on where you stand with AI
             </h1>
             <p className="text-lg leading-relaxed max-w-2xl mx-auto" style={{ color: "var(--text-mid)" }}>
-              Pick one. Both are free, fast, and don&apos;t send you into an email nurture sequence.
+              Pick one. Both are free and fast, and we don&apos;t add you to any email list.
             </p>
           </div>
 
