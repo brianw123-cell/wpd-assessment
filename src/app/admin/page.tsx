@@ -7,6 +7,7 @@ import { supabase } from "@/lib/supabase";
 import { listSubmissions } from "@/lib/queries";
 import { PROFILES } from "@/lib/scoring";
 import AdminStats from "@/components/AdminStats";
+import TeamsAdmin from "@/components/TeamsAdmin";
 
 type SortKey = "created_at" | "total_score" | "company" | "profile";
 
@@ -30,6 +31,7 @@ export default function AdminPage() {
   const [error, setError] = useState<string | null>(null);
   const [sortKey, setSortKey] = useState<SortKey>("created_at");
   const [sortDesc, setSortDesc] = useState(true);
+  const [tab, setTab] = useState<"submissions" | "teams">("submissions");
 
   // Auth gate — use getSession (reads localStorage synchronously) and also subscribe
   // to onAuthStateChange so we don't kick the user to /login during hydration races
@@ -189,6 +191,19 @@ export default function AdminPage() {
 
       <main id="main" className="flex-1 px-6 py-8 overflow-x-auto">
         <div className="max-w-7xl mx-auto">
+          <div className="mb-6 flex items-center gap-2 border-b" style={{ borderColor: "var(--border-soft)" }}>
+            <TabButton active={tab === "submissions"} onClick={() => setTab("submissions")}>
+              Readiness submissions
+            </TabButton>
+            <TabButton active={tab === "teams"} onClick={() => setTab("teams")}>
+              Change-curve teams
+            </TabButton>
+          </div>
+
+          {tab === "teams" ? (
+            <TeamsAdmin />
+          ) : (
+            <>
           <AdminStats rows={sortedRows} />
 
           <p className="text-sm mb-4" style={{ color: "var(--text-muted)" }}>
@@ -303,15 +318,34 @@ export default function AdminPage() {
               </tbody>
             </table>
           </div>
+            </>
+          )}
         </div>
       </main>
 
       <footer className="py-6 text-center text-xs" style={{ color: "var(--text-muted)" }}>
         <Link href="/" className="hover:underline">
-          ← Assessment landing
+          ← Home
         </Link>
       </footer>
     </div>
+  );
+}
+
+function TabButton({ active, onClick, children }: { active: boolean; onClick: () => void; children: React.ReactNode }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="px-4 py-2 text-sm font-medium"
+      style={{
+        color: active ? "var(--navy)" : "var(--text-muted)",
+        borderBottom: active ? "2px solid var(--accent)" : "2px solid transparent",
+        marginBottom: "-1px",
+      }}
+    >
+      {children}
+    </button>
   );
 }
 

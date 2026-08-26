@@ -8,10 +8,22 @@ const geistSans = Geist({
 });
 
 export const metadata: Metadata = {
-  title: "AI Readiness Assessment — West Product Development",
+  title: "AI Readiness — West Product Development",
   description:
-    "A free 4-minute self-assessment for roofing, solar, HVAC, plumbing, electrical, and general-contracting business owners. Fifteen questions. Get your score, where you'd hit friction, and one specific place to start with AI.",
+    "Two free tools from West Product Development. See how ready your business is for AI, and see where your team is on the change curve.",
   robots: { index: true, follow: true },
+  icons: {
+    icon: [
+      { url: "/favicon-32.png", sizes: "32x32", type: "image/png" },
+      { url: "/favicon-16.png", sizes: "16x16", type: "image/png" },
+    ],
+    apple: [{ url: "/apple-touch-icon.png", sizes: "180x180" }],
+  },
+  appleWebApp: {
+    capable: true,
+    title: "WPD Assessment",
+    statusBarStyle: "default",
+  },
 };
 
 export const viewport: Viewport = {
