@@ -51,9 +51,9 @@ export default function EmailGate({
         Where should we send the breakdown?
       </h2>
       <p className="text-sm mb-8" style={{ color: "var(--text-mid)" }}>
-        We&apos;ll email you the full breakdown. We don&apos;t sell your
-        information and we don&apos;t add you to anything you didn&apos;t
-        ask for.
+        We use this to follow up if you want to talk through your result. We
+        don&apos;t sell your information and we don&apos;t add you to any
+        email list.
       </p>
 
       <form

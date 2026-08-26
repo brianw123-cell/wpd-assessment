@@ -54,21 +54,24 @@ export async function startAssessment(
 
 /**
  * Save progress on the current row without submitting lead info.
- * Called after each choice so an abandon still leaves useful data.
+ * Uses a SECURITY DEFINER RPC because anon has no SELECT on assessments
+ * (protects lead data), and PostgREST needs SELECT to locate rows for
+ * update — a bare `.update()` silently affects zero rows.
  */
 export async function saveProgress(answers: AnswersMap): Promise<void> {
   const rowId = getRowId();
   if (!rowId) return;
-  const { error } = await supabase
-    .from('assessments')
-    .update({ answers: answersToJson(answers) })
-    .eq('id', rowId);
+  const { error } = await supabase.rpc('save_readiness_progress', {
+    p_row_id: rowId,
+    p_answers: answersToJson(answers),
+  });
   if (error) console.error('saveProgress failed:', error);
 }
 
 /**
  * Called when the user completes the email gate + gets their result.
  * Writes: lead fields, computed scores, profile, completed_at.
+ * Uses a SECURITY DEFINER RPC for the same reason saveProgress does.
  */
 export async function submitAssessment(args: {
   answers: AnswersMap;
@@ -79,28 +82,30 @@ export async function submitAssessment(args: {
   if (!rowId) return false;
 
   const { lead, result, answers } = args;
-  const { error } = await supabase
-    .from('assessments')
-    .update({
-      completed_at: new Date().toISOString(),
-      name: lead.name,
-      email: lead.email,
-      company: lead.company,
-      role: lead.role,
-      total_score: result.totalScore,
-      profile: result.profile.key,
-      dim_a: result.subscores.A,
-      dim_b: result.subscores.B,
-      dim_c: result.subscores.C,
-      dim_d: result.subscores.D,
-      dim_e: result.subscores.E,
-      handoff_task: result.handoffTask,
-      answers: answersToJson(answers),
-    })
-    .eq('id', rowId);
+  const { data, error } = await supabase.rpc('submit_readiness_assessment', {
+    p_row_id: rowId,
+    p_name: lead.name,
+    p_email: lead.email,
+    p_company: lead.company,
+    p_role: lead.role,
+    p_total_score: result.totalScore,
+    p_profile: result.profile.key,
+    p_dim_a: result.subscores.A,
+    p_dim_b: result.subscores.B,
+    p_dim_c: result.subscores.C,
+    p_dim_d: result.subscores.D,
+    p_dim_e: result.subscores.E,
+    p_handoff_task: result.handoffTask,
+    p_answers: answersToJson(answers),
+  });
 
   if (error) {
     console.error('submitAssessment failed:', error);
+    return false;
+  }
+  const matched = (data as { matched: number } | null)?.matched ?? 0;
+  if (matched === 0) {
+    console.warn('submitAssessment matched 0 rows for id', rowId);
     return false;
   }
   return true;
