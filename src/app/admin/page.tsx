@@ -31,25 +31,28 @@ export default function AdminPage() {
   const [sortKey, setSortKey] = useState<SortKey>("created_at");
   const [sortDesc, setSortDesc] = useState(true);
 
-  // Auth gate
+  // Auth gate — use getSession (reads localStorage synchronously) and also subscribe
+  // to onAuthStateChange so we don't kick the user to /login during hydration races
+  // right after a magic-link exchange.
   useEffect(() => {
     let cancelled = false;
-    (async () => {
-      const { data } = await supabase.auth.getUser();
+    let redirectTimer: ReturnType<typeof setTimeout> | null = null;
+
+    const proceedWithUser = async (userEmail: string | null | undefined) => {
       if (cancelled) return;
-      const userEmail = data.user?.email?.toLowerCase() ?? null;
-      if (!userEmail) {
+      const normalized = userEmail?.toLowerCase() ?? null;
+      if (!normalized) {
         router.replace("/login");
         return;
       }
-      if (!ADMIN_EMAILS.includes(userEmail)) {
+      if (!ADMIN_EMAILS.includes(normalized)) {
         setError(
-          `Signed in as ${userEmail}, but that address is not on the admin allowlist for this app.`
+          `Signed in as ${normalized}, but that address is not on the admin allowlist for this app.`
         );
         setLoading(false);
         return;
       }
-      setEmail(userEmail);
+      setEmail(normalized);
       try {
         const data = await listSubmissions();
         if (cancelled) return;
@@ -61,9 +64,37 @@ export default function AdminPage() {
         if (cancelled) return;
         setLoading(false);
       }
-    })();
+    };
+
+    // 1. Check localStorage first
+    supabase.auth.getSession().then(({ data }) => {
+      if (cancelled) return;
+      if (data.session?.user) {
+        proceedWithUser(data.session.user.email);
+      } else {
+        // No session yet — wait briefly for SIGNED_IN, then give up and bounce to /login
+        redirectTimer = setTimeout(() => {
+          if (cancelled) return;
+          router.replace("/login");
+        }, 1500);
+      }
+    });
+
+    // 2. Also subscribe: if a session shows up while we're waiting, cancel the timer
+    const { data: sub } = supabase.auth.onAuthStateChange((event, session) => {
+      if (cancelled) return;
+      if ((event === "SIGNED_IN" || event === "INITIAL_SESSION") && session?.user) {
+        if (redirectTimer) clearTimeout(redirectTimer);
+        proceedWithUser(session.user.email);
+      } else if (event === "SIGNED_OUT") {
+        router.replace("/login");
+      }
+    });
+
     return () => {
       cancelled = true;
+      if (redirectTimer) clearTimeout(redirectTimer);
+      sub.subscription.unsubscribe();
     };
   }, [router]);
 
