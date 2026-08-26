@@ -17,6 +17,12 @@ function answersToJson(answers: AnswersMap): Record<string, number | string> {
 /**
  * Called the first time the user hits Next on question 1 (or if we want to
  * pre-create the row on landing). Persists the session so a page reload resumes.
+ *
+ * We generate the row's UUID on the client so the insert doesn't need to
+ * SELECT the row back afterwards. Anon has no SELECT policy on `assessments`
+ * (protects lead data), and chaining `.select()` on an insert triggers a
+ * re-read anon can't do — Postgres reports that as an RLS violation on the
+ * insert itself, which is what silently killed every submission until this fix.
  */
 export async function startAssessment(
   answers: AnswersMap,
@@ -28,23 +34,22 @@ export async function startAssessment(
   const existingRowId = getRowId();
   if (existingRowId) return existingRowId;
 
-  const { data, error } = await supabase
-    .from('assessments')
-    .insert({
-      session_id: sessionId,
-      answers: answersToJson(answers),
-      source: meta.source ?? null,
-      user_agent: meta.user_agent ?? null,
-    })
-    .select('id')
-    .single();
+  const rowId = crypto.randomUUID();
 
-  if (error || !data) {
+  const { error } = await supabase.from('assessments').insert({
+    id: rowId,
+    session_id: sessionId,
+    answers: answersToJson(answers),
+    source: meta.source ?? null,
+    user_agent: meta.user_agent ?? null,
+  });
+
+  if (error) {
     console.error('startAssessment failed:', error);
     return null;
   }
-  setRowId(data.id);
-  return data.id;
+  setRowId(rowId);
+  return rowId;
 }
 
 /**

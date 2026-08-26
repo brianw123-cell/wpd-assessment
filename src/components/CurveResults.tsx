@@ -7,9 +7,10 @@ type Props = {
   result: CurveResult;
   teamCode: string | null;
   addedToTeam: boolean;
+  teamCodeError?: string | null;
 };
 
-export default function CurveResults({ result, teamCode, addedToTeam }: Props) {
+export default function CurveResults({ result, teamCode, addedToTeam, teamCodeError }: Props) {
   const { usageScore, confidenceScore, stage } = result;
 
   return (
@@ -71,6 +72,19 @@ export default function CurveResults({ result, teamCode, addedToTeam }: Props) {
         </div>
       </div>
 
+      {teamCodeError && (
+        <div
+          className="mt-4 rounded-2xl px-5 py-4 text-sm"
+          style={{
+            background: "rgba(198,123,92,0.10)",
+            border: "1px solid rgba(198,123,92,0.4)",
+            color: "#8a4a34",
+          }}
+        >
+          {teamCodeError} If you meant to join a team, ask whoever set it up for the exact code, then retake this at{" "}
+          <strong>/curve</strong>.
+        </div>
+      )}
       <div
         className="mt-4 rounded-2xl px-5 py-4 text-center text-sm"
         style={{

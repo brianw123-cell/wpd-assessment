@@ -68,6 +68,7 @@ export default function CurvePage() {
   const [participantId, setParticipantId] = useState(""); // email OR any string; hashed
   const [result, setResult] = useState<CurveResult | null>(null);
   const [addedToTeam, setAddedToTeam] = useState(false);
+  const [teamCodeError, setTeamCodeError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
   const currentQuestion: CurveQuestion | undefined = CURVE_QUESTIONS[state.index];
@@ -101,6 +102,22 @@ export default function CurvePage() {
         result: computed,
         createdFrom: "individual",
       });
+
+      // If they typed a team code but the team doesn't exist, retry as an
+      // anonymous individual take and warn them clearly. Silently dropping
+      // their answers is the worst outcome.
+      if (trimmedCode && !submission.ok && submission.error === "team_not_found") {
+        setTeamCodeError(
+          `We couldn't find a team with the code "${trimmedCode}". Your answers were saved as an anonymous individual take instead.`
+        );
+        await submitCurveResponse({
+          teamCode: null,
+          participantHash: null,
+          answers: state.answers,
+          result: computed,
+          createdFrom: "individual",
+        });
+      }
       setResult(computed);
       setAddedToTeam(!!(trimmedCode && submission.ok));
       if (typeof window !== "undefined") window.scrollTo({ top: 0, behavior: "smooth" });
@@ -229,6 +246,7 @@ export default function CurvePage() {
                 result={result}
                 teamCode={teamCode.trim().toLowerCase() || null}
                 addedToTeam={addedToTeam}
+                teamCodeError={teamCodeError}
               />
             )}
           </>

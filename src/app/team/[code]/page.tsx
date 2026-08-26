@@ -87,25 +87,33 @@ export default function TeamViewPage({ params }: PageProps) {
           </form>
         ) : (
           <div className="w-full">
-            <div className="max-w-5xl mx-auto mb-4 flex items-center justify-end">
-              <button
-                type="button"
-                onClick={async () => {
-                  if (!confirm("Open a new round? This closes the current round so retake responses go into round " + ((view.rounds[view.rounds.length - 1]?.round_number ?? 0) + 1) + ".")) return;
-                  const res = await openNewRound({ code, passphrase });
-                  if (!res.ok) {
-                    alert("Couldn't open a new round: " + res.error);
-                    return;
-                  }
-                  const refreshed = await getTeamView({ code, passphrase });
-                  if (refreshed.ok) setView(refreshed.view);
-                }}
-                className="text-xs font-medium px-4 py-2 rounded-full border"
-                style={{ borderColor: "var(--border-soft)", color: "var(--accent)", background: "var(--bg-card)" }}
-              >
-                Open a new round
-              </button>
-            </div>
+            <OpenRoundBar
+              view={view}
+              onOpenRound={async () => {
+                const latest = view.rounds[view.rounds.length - 1];
+                const latestResponses = latest ? latest.response_count : 0;
+                if (latestResponses === 0) {
+                  alert(
+                    "Round " + (latest?.round_number ?? 1) +
+                    " has 0 responses. Opening another empty round would just push the current one out of view. Ask the team to respond first, then open a new round for the retake."
+                  );
+                  return;
+                }
+                const nextNumber = (latest?.round_number ?? 0) + 1;
+                if (!confirm(
+                  "Open round " + nextNumber + "? This closes round " + latest?.round_number +
+                  " (which will still be visible), and any new /curve responses with team code \"" +
+                  code + "\" will go into round " + nextNumber + " so you can compare movement."
+                )) return;
+                const res = await openNewRound({ code, passphrase });
+                if (!res.ok) {
+                  alert("Couldn't open a new round: " + res.error);
+                  return;
+                }
+                const refreshed = await getTeamView({ code, passphrase });
+                if (refreshed.ok) setView(refreshed.view);
+              }}
+            />
             <TeamView view={view} benchmark={benchmark ?? undefined} />
           </div>
         )}
@@ -115,6 +123,40 @@ export default function TeamViewPage({ params }: PageProps) {
           ← West Product Development LLC
         </Link>
       </footer>
+    </div>
+  );
+}
+
+function OpenRoundBar({
+  view,
+  onOpenRound,
+}: {
+  view: TeamViewData;
+  onOpenRound: () => void | Promise<void>;
+}) {
+  const latest = view.rounds[view.rounds.length - 1];
+  const canOpen = !!latest && latest.response_count >= 5;
+  return (
+    <div className="max-w-5xl mx-auto mb-4 flex items-center justify-end gap-3">
+      <span className="text-xs" style={{ color: "var(--text-muted)" }}>
+        {latest ? `Round ${latest.round_number} · ${latest.response_count} responses` : "No rounds"}
+      </span>
+      <button
+        type="button"
+        onClick={() => onOpenRound()}
+        disabled={!canOpen}
+        title={canOpen ? "Close this round and open the next one for retakes" : "Need at least 5 responses in this round before opening a new one"}
+        className="text-xs font-medium px-4 py-2 rounded-full border"
+        style={{
+          borderColor: "var(--border-soft)",
+          color: canOpen ? "var(--accent)" : "var(--text-muted)",
+          background: "var(--bg-card)",
+          opacity: canOpen ? 1 : 0.5,
+          cursor: canOpen ? "pointer" : "not-allowed",
+        }}
+      >
+        Open a retake round →
+      </button>
     </div>
   );
 }
