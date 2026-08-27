@@ -232,7 +232,11 @@ function TeamHeader({ team, round }: { team: TeamViewData["team"]; round: TeamRo
       {round && (
         <p className="text-sm mt-1" style={{ color: "var(--text-muted)" }}>
           Round {round.round_number}
-          {round.label ? ` — ${round.label}` : ""} · opened {formatDate(round.opened_at)}
+          {round.label && round.label.toLowerCase() !== `round ${round.round_number}`.toLowerCase()
+            ? ` — ${round.label}`
+            : ""}
+          {" · opened "}
+          {formatDate(round.opened_at)}
         </p>
       )}
     </div>

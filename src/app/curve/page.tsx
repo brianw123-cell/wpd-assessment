@@ -253,9 +253,14 @@ export default function CurvePage() {
         )}
       </main>
 
-      <footer className="pt-4 pb-8 text-center text-xs" style={{ color: "var(--text-muted)" }}>
-        <Link href="/" className="hover:underline">
-          ← West Product Development LLC
+      <footer className="pt-6 pb-10 text-center">
+        <Link
+          href="/"
+          className="inline-flex items-center gap-2 text-base font-semibold hover:underline"
+          style={{ color: "var(--accent)" }}
+        >
+          <span aria-hidden="true">←</span>
+          West Product Development LLC
         </Link>
       </footer>
     </div>
