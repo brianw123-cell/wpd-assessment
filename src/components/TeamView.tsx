@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import type {
   CurveResponseRow,
   CurveStageKey,
@@ -38,29 +38,50 @@ type Props = {
 export default function TeamView({ view, benchmark }: Props) {
   const { team, rounds, responses } = view;
 
-  const rounds_by_id = useMemo(() => {
-    const m = new Map<string, TeamRound>();
-    rounds.forEach((r) => m.set(r.id, r));
-    return m;
-  }, [rounds]);
-
   const roundsSorted = useMemo(() => [...rounds].sort((a, b) => a.round_number - b.round_number), [rounds]);
-  const latestRound = roundsSorted[roundsSorted.length - 1] ?? null;
-  const previousRound = roundsSorted.length >= 2 ? roundsSorted[roundsSorted.length - 2] : null;
+  // Default the round selector to the latest round that actually has responses,
+  // so opening a fresh Round 2 doesn't hide the meaningful Round 1 data behind
+  // an empty screen. Falls back to the latest round if every round is empty.
+  const defaultRoundId = useMemo(() => {
+    const withResponses = [...roundsSorted].reverse().find((r) => r.response_count > 0);
+    return withResponses?.id ?? roundsSorted[roundsSorted.length - 1]?.id ?? null;
+  }, [roundsSorted]);
+  const [selectedRoundId, setSelectedRoundId] = useState<string | null>(defaultRoundId);
+  const activeRound = useMemo(
+    () => roundsSorted.find((r) => r.id === selectedRoundId) ?? roundsSorted[roundsSorted.length - 1] ?? null,
+    [roundsSorted, selectedRoundId]
+  );
 
-  const latestResponses = useMemo(
-    () => responses.filter((r) => r.round_id === latestRound?.id),
-    [responses, latestRound]
+  // For the retake comparison, we always compare the ACTIVE round to the
+  // round immediately before it (the natural "before" for the current view).
+  const previousRound = useMemo(() => {
+    if (!activeRound) return null;
+    const idx = roundsSorted.findIndex((r) => r.id === activeRound.id);
+    return idx > 0 ? roundsSorted[idx - 1] : null;
+  }, [roundsSorted, activeRound]);
+
+  const activeResponses = useMemo(
+    () => responses.filter((r) => r.round_id === activeRound?.id),
+    [responses, activeRound]
   );
   const previousResponses = useMemo(
     () => (previousRound ? responses.filter((r) => r.round_id === previousRound.id) : []),
     [responses, previousRound]
   );
 
-  if (latestResponses.length < MIN_RESPONSES) {
+  const roundPicker = roundsSorted.length > 1 ? (
+    <RoundPicker
+      rounds={roundsSorted}
+      activeRoundId={activeRound?.id ?? null}
+      onSelect={setSelectedRoundId}
+    />
+  ) : null;
+
+  if (activeResponses.length < MIN_RESPONSES) {
     return (
       <div className="max-w-3xl mx-auto">
-        <TeamHeader team={team} round={latestRound} />
+        <TeamHeader team={team} round={activeRound} />
+        {roundPicker}
         <div
           className="rounded-2xl px-6 py-10 text-center"
           style={{
@@ -70,15 +91,15 @@ export default function TeamView({ view, benchmark }: Props) {
           }}
         >
           <p className="text-[11px] tracking-[0.18em] font-semibold uppercase mb-3" style={{ color: "var(--accent)" }}>
-            Not enough responses yet
+            Not enough responses in this round yet
           </p>
           <h2 className="font-semibold mb-3" style={{ color: "var(--navy)", fontSize: "clamp(22px, 3vw, 28px)" }}>
-            {latestResponses.length} of {MIN_RESPONSES}
+            {activeResponses.length} of {MIN_RESPONSES}
           </h2>
           <p className="text-[15px]" style={{ color: "var(--text-mid)" }}>
-            We render the team view once at least five people have completed this round. Below that number,
-            individual answers become identifiable and the tool becomes a surveillance device. This is a
-            hard rule.
+            We render the round&apos;s roll-up once at least five people have completed it. Below that number,
+            individual answers become identifiable and the tool becomes a surveillance device.
+            {roundsSorted.length > 1 && " Use the round picker above to look at a previous round."}
           </p>
         </div>
       </div>
@@ -87,44 +108,45 @@ export default function TeamView({ view, benchmark }: Props) {
 
   return (
     <div className="max-w-5xl mx-auto">
-      <TeamHeader team={team} round={latestRound} />
+      <TeamHeader team={team} round={activeRound} />
+      {roundPicker}
 
       <div className="grid md:grid-cols-2 gap-4 mb-4">
         <Card title="Where the team is">
-          <DistributionBar responses={latestResponses} />
+          <DistributionBar responses={activeResponses} />
           <p className="mt-3 text-[13px]" style={{ color: "var(--text-muted)" }}>
-            {latestResponses.length} responses{previousRound ? ` in round ${latestRound?.round_number}` : ""}.
+            {activeResponses.length} responses in round {activeRound?.round_number}.
           </p>
         </Card>
 
         <Card title="Every person, plotted">
-          <ScatterPlot responses={latestResponses} />
+          <ScatterPlot responses={activeResponses} />
         </Card>
       </div>
 
       <div className="grid md:grid-cols-2 gap-4 mb-4">
-        <ComplyingCallout responses={latestResponses} />
-        <WillingStalledCallout responses={latestResponses} />
+        <ComplyingCallout responses={activeResponses} />
+        <WillingStalledCallout responses={activeResponses} />
       </div>
 
       <Card title="Psychological safety">
-        <SafetyReading responses={latestResponses} />
+        <SafetyReading responses={activeResponses} />
       </Card>
 
       <div className="mt-4">
         <Card title="What people want leadership to understand">
-          <LeadershipNotes responses={latestResponses} />
+          <LeadershipNotes responses={activeResponses} />
         </Card>
       </div>
 
-      {previousRound && (
+      {previousRound && activeRound && (
         <div className="mt-4">
           <Card title={`Movement since round ${previousRound.round_number}`}>
             <RetakeComparison
               previous={previousResponses}
-              current={latestResponses}
+              current={activeResponses}
               previousRound={previousRound}
-              currentRound={latestRound!}
+              currentRound={activeRound}
             />
           </Card>
         </div>
@@ -134,15 +156,63 @@ export default function TeamView({ view, benchmark }: Props) {
         <div className="mt-4">
           <Card title="How your team compares">
             <Benchmark
-              teamResponses={latestResponses}
+              teamResponses={activeResponses}
               benchmark={benchmark}
             />
           </Card>
         </div>
       )}
+    </div>
+  );
+}
 
-      {/* Silence the unused warning for rounds_by_id (kept for future round-picker) */}
-      <span hidden>{rounds_by_id.size}</span>
+function RoundPicker({
+  rounds,
+  activeRoundId,
+  onSelect,
+}: {
+  rounds: TeamRound[];
+  activeRoundId: string | null;
+  onSelect: (id: string) => void;
+}) {
+  return (
+    <div className="mb-6 flex items-center gap-2 flex-wrap">
+      <span className="text-[11px] tracking-[0.18em] font-semibold uppercase mr-1" style={{ color: "var(--text-muted)" }}>
+        Rounds
+      </span>
+      {rounds.map((r) => {
+        const active = r.id === activeRoundId;
+        return (
+          <button
+            key={r.id}
+            type="button"
+            onClick={() => onSelect(r.id)}
+            className="text-xs font-medium px-3 py-1.5 rounded-full border transition-colors"
+            style={{
+              borderColor: active ? "var(--accent)" : "var(--border-soft)",
+              background: active ? "var(--accent)" : "var(--bg-card)",
+              color: active ? "#f5f3ef" : "var(--text-mid)",
+            }}
+          >
+            Round {r.round_number}
+            <span
+              className="ml-1.5 tabular-nums"
+              style={{ opacity: 0.8 }}
+            >
+              ({r.response_count})
+            </span>
+            {r.closed_at ? (
+              <span className="ml-1 text-[10px] uppercase tracking-wider" style={{ opacity: 0.6 }}>
+                closed
+              </span>
+            ) : (
+              <span className="ml-1 text-[10px] uppercase tracking-wider" style={{ opacity: 0.6 }}>
+                open
+              </span>
+            )}
+          </button>
+        );
+      })}
     </div>
   );
 }
