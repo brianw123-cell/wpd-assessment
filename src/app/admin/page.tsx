@@ -170,9 +170,14 @@ export default function AdminPage() {
         style={{ borderColor: "var(--border-soft)" }}
       >
         <div>
-          <p className="text-[11px] tracking-[0.18em] font-semibold uppercase" style={{ color: "var(--accent)" }}>
-            Admin
-          </p>
+          <Link
+            href="/"
+            className="inline-flex items-center gap-2 text-sm font-semibold hover:underline mb-1"
+            style={{ color: "var(--accent)" }}
+          >
+            <span aria-hidden="true">←</span>
+            West Product Development LLC
+          </Link>
           <h1 className="text-lg font-semibold" style={{ color: "var(--navy)" }}>
             Assessment submissions
           </h1>

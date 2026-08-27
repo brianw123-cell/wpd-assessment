@@ -275,12 +275,13 @@ export default function CurvePage() {
 function TopBar({ phase }: { phase: Phase }) {
   return (
     <header className="w-full px-6 py-4 border-b" style={{ borderColor: "var(--border-soft)" }}>
-      <div className="max-w-3xl mx-auto flex items-center justify-between">
+      <div className="max-w-3xl mx-auto flex items-center justify-between gap-3">
         <Link
           href="/"
-          className="text-sm font-semibold tracking-tight"
-          style={{ color: "var(--navy)" }}
+          className="inline-flex items-center gap-2 text-sm font-semibold hover:underline"
+          style={{ color: "var(--accent)" }}
         >
+          <span aria-hidden="true">←</span>
           West Product Development LLC
         </Link>
         <span
