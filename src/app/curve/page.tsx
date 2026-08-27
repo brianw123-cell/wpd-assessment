@@ -195,9 +195,8 @@ export default function CurvePage() {
                     }}
                   />
                   <span className="text-[11px] mt-1" style={{ color: "var(--text-muted)" }}>
-                    We hash this immediately. Your email is never stored next to your answers, and
-                    your employer will never see it. Without it, we can&apos;t connect your Round 2
-                    answer back to Round 1.
+                    Only used to match your Round 2 answer to your Round 1 answer later. Never shown on
+                    the team&apos;s report. Your employer never sees it.
                   </span>
                 </label>
               )}
