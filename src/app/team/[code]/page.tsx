@@ -11,10 +11,17 @@ type PageProps = { params: Promise<{ code: string }> };
 export default function TeamViewPage({ params }: PageProps) {
   const { code } = use(params);
   const [passphrase, setPassphrase] = useState("");
+  const [showPass, setShowPass] = useState(false);
   const [view, setView] = useState<TeamViewData | null>(null);
   const [benchmark, setBenchmark] = useState<{ total: number; stages: Record<string, number> } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [roundDialog, setRoundDialog] = useState<
+    | { kind: "confirm"; latestNumber: number; nextNumber: number }
+    | { kind: "error"; message: string }
+    | { kind: "busy" }
+    | null
+  >(null);
 
   const handleUnlock = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -61,15 +68,26 @@ export default function TeamViewPage({ params }: PageProps) {
               <span className="text-xs font-medium tracking-wide uppercase" style={{ color: "var(--text-muted)" }}>
                 Passphrase
               </span>
-              <input
-                type="password"
-                autoFocus
-                value={passphrase}
-                onChange={(e) => setPassphrase(e.target.value)}
-                required
-                className="rounded-lg px-4 py-3 text-base border-2 focus:outline-none"
-                style={{ background: "var(--bg-card)", borderColor: "var(--border-soft)", color: "var(--text)" }}
-              />
+              <div className="relative">
+                <input
+                  type={showPass ? "text" : "password"}
+                  autoFocus
+                  value={passphrase}
+                  onChange={(e) => setPassphrase(e.target.value)}
+                  required
+                  className="w-full rounded-lg px-4 py-3 pr-16 text-base border-2 focus:outline-none"
+                  style={{ background: "var(--bg-card)", borderColor: "var(--border-soft)", color: "var(--text)" }}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPass((v) => !v)}
+                  aria-label={showPass ? "Hide passphrase" : "Show passphrase"}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 text-xs font-medium px-3 py-1 rounded-md"
+                  style={{ color: "var(--accent)", background: "transparent" }}
+                >
+                  {showPass ? "Hide" : "Show"}
+                </button>
+              </div>
             </label>
             {error && (
               <p className="text-sm mb-3" style={{ color: "#c67b5c" }}>
@@ -89,32 +107,97 @@ export default function TeamViewPage({ params }: PageProps) {
           <div className="w-full">
             <OpenRoundBar
               view={view}
-              onOpenRound={async () => {
+              onOpenRound={() => {
                 const latest = view.rounds[view.rounds.length - 1];
                 const latestResponses = latest ? latest.response_count : 0;
                 if (latestResponses === 0) {
-                  alert(
-                    "Round " + (latest?.round_number ?? 1) +
-                    " has 0 responses. Opening another empty round would just push the current one out of view. Ask the team to respond first, then open a new round for the retake."
-                  );
+                  setRoundDialog({
+                    kind: "error",
+                    message:
+                      "Round " + (latest?.round_number ?? 1) + " has zero responses. Opening another empty round would push this one out of view. Ask the team to respond first, then open a new round for the retake.",
+                  });
                   return;
                 }
-                const nextNumber = (latest?.round_number ?? 0) + 1;
-                if (!confirm(
-                  "Open round " + nextNumber + "? This closes round " + latest?.round_number +
-                  " (which will still be visible), and any new /curve responses with team code \"" +
-                  code + "\" will go into round " + nextNumber + " so you can compare movement."
-                )) return;
-                const res = await openNewRound({ code, passphrase });
-                if (!res.ok) {
-                  alert("Couldn't open a new round: " + res.error);
-                  return;
-                }
-                const refreshed = await getTeamView({ code, passphrase });
-                if (refreshed.ok) setView(refreshed.view);
+                setRoundDialog({
+                  kind: "confirm",
+                  latestNumber: latest!.round_number,
+                  nextNumber: (latest?.round_number ?? 0) + 1,
+                });
               }}
             />
             <TeamView view={view} benchmark={benchmark ?? undefined} />
+            {roundDialog && (
+              <Modal onClose={() => setRoundDialog(null)}>
+                {roundDialog.kind === "confirm" && (
+                  <>
+                    <h2 className="text-xl font-semibold mb-3" style={{ color: "var(--navy)" }}>
+                      Open round {roundDialog.nextNumber}?
+                    </h2>
+                    <p className="text-[15px] mb-6" style={{ color: "var(--text-mid)" }}>
+                      This closes round {roundDialog.latestNumber} (still visible via the round picker). Any new{" "}
+                      <code className="text-[13px]" style={{ background: "var(--bg-alt)", padding: "1px 6px", borderRadius: 4 }}>
+                        /curve
+                      </code>{" "}
+                      responses with team code <strong>{code}</strong> will go into round {roundDialog.nextNumber} so you can
+                      compare movement.
+                    </p>
+                    <div className="flex gap-3 justify-end">
+                      <button
+                        type="button"
+                        onClick={() => setRoundDialog(null)}
+                        className="px-5 py-2.5 rounded-full text-sm font-medium border"
+                        style={{ borderColor: "var(--border-soft)", color: "var(--text-mid)", background: "var(--bg-card)" }}
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        type="button"
+                        onClick={async () => {
+                          setRoundDialog({ kind: "busy" });
+                          const res = await openNewRound({ code, passphrase });
+                          if (!res.ok) {
+                            setRoundDialog({ kind: "error", message: "Couldn't open a new round: " + res.error });
+                            return;
+                          }
+                          const refreshed = await getTeamView({ code, passphrase });
+                          if (refreshed.ok) setView(refreshed.view);
+                          setRoundDialog(null);
+                        }}
+                        className="px-5 py-2.5 rounded-full text-sm font-semibold text-white"
+                        style={{ background: "var(--navy)", boxShadow: "0 4px 14px rgba(30,45,66,0.18)" }}
+                      >
+                        Open round {roundDialog.nextNumber}
+                      </button>
+                    </div>
+                  </>
+                )}
+                {roundDialog.kind === "error" && (
+                  <>
+                    <h2 className="text-xl font-semibold mb-3" style={{ color: "var(--navy)" }}>
+                      Can&apos;t open a new round yet
+                    </h2>
+                    <p className="text-[15px] mb-6" style={{ color: "var(--text-mid)" }}>
+                      {roundDialog.message}
+                    </p>
+                    <div className="flex justify-end">
+                      <button
+                        type="button"
+                        onClick={() => setRoundDialog(null)}
+                        className="px-5 py-2.5 rounded-full text-sm font-semibold text-white"
+                        style={{ background: "var(--navy)" }}
+                      >
+                        OK
+                      </button>
+                    </div>
+                  </>
+                )}
+                {roundDialog.kind === "busy" && (
+                  <p className="text-[15px]" style={{ color: "var(--text-mid)" }}>
+                    Opening round…
+                  </p>
+                )}
+              </Modal>
+            )}
           </div>
         )}
       </main>
@@ -162,6 +245,26 @@ function OpenRoundBar({
       >
         Open a retake round →
       </button>
+    </div>
+  );
+}
+
+function Modal({ children, onClose }: { children: React.ReactNode; onClose: () => void }) {
+  return (
+    <div
+      className="fixed inset-0 flex items-center justify-center p-4 z-50"
+      style={{ background: "rgba(30,45,66,0.55)" }}
+      onClick={onClose}
+    >
+      <div
+        className="w-full max-w-md rounded-2xl px-7 py-7"
+        style={{ background: "var(--bg-card)", border: "1px solid var(--border-soft)", boxShadow: "var(--shadow-card)" }}
+        onClick={(e) => e.stopPropagation()}
+        role="dialog"
+        aria-modal="true"
+      >
+        {children}
+      </div>
     </div>
   );
 }

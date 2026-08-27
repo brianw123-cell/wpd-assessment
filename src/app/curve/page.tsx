@@ -179,13 +179,14 @@ export default function CurvePage() {
               {teamCode.trim().length > 0 && (
                 <label className="flex flex-col gap-2">
                   <span className="text-xs font-medium tracking-wide uppercase" style={{ color: "var(--text-muted)" }}>
-                    Your email (used only to match your retake later)
+                    Your email (required so we can match your retake)
                   </span>
                   <input
-                    type="text"
+                    type="email"
                     value={participantId}
                     onChange={(e) => setParticipantId(e.target.value)}
                     placeholder="you@work.com"
+                    required
                     className="rounded-lg px-4 py-3 text-base border-2 focus:outline-none"
                     style={{
                       background: "var(--bg-alt)",
@@ -194,7 +195,9 @@ export default function CurvePage() {
                     }}
                   />
                   <span className="text-[11px] mt-1" style={{ color: "var(--text-muted)" }}>
-                    We hash this immediately. Your email is never stored next to your answers.
+                    We hash this immediately. Your email is never stored next to your answers, and
+                    your employer will never see it. Without it, we can&apos;t connect your Round 2
+                    answer back to Round 1.
                   </span>
                 </label>
               )}
@@ -203,10 +206,13 @@ export default function CurvePage() {
             <button
               type="button"
               onClick={() => dispatch({ type: "start" })}
+              disabled={teamCode.trim().length > 0 && !isValidEmail(participantId)}
               className="inline-flex items-center gap-2 px-8 py-4 rounded-full text-white font-medium text-base tracking-wide transition-transform hover:-translate-y-[1px]"
               style={{
                 background: "var(--navy)",
                 boxShadow: "0 4px 14px rgba(30,45,66,0.18)",
+                opacity: teamCode.trim().length > 0 && !isValidEmail(participantId) ? 0.5 : 1,
+                cursor: teamCode.trim().length > 0 && !isValidEmail(participantId) ? "not-allowed" : "pointer",
               }}
             >
               Start
@@ -287,6 +293,10 @@ function TopBar({ phase }: { phase: Phase }) {
       </div>
     </header>
   );
+}
+
+function isValidEmail(v: string): boolean {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v.trim());
 }
 
 function pickChoiceScore(a: CurveAnswer | undefined): 0 | 1 | 2 | 3 | undefined {

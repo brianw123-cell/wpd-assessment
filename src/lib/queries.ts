@@ -116,7 +116,7 @@ export async function listSubmissions() {
   const { data, error } = await supabase
     .from('assessments')
     .select(
-      'id, session_id, created_at, completed_at, name, email, company, role, total_score, profile, dim_a, dim_b, dim_c, dim_d, dim_e, handoff_task'
+      'id, session_id, created_at, completed_at, name, email, company, role, total_score, profile, dim_a, dim_b, dim_c, dim_d, dim_e, handoff_task, answers, source'
     )
     .order('created_at', { ascending: false });
   if (error) throw error;

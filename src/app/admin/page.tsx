@@ -8,6 +8,7 @@ import { listSubmissions } from "@/lib/queries";
 import { PROFILES } from "@/lib/scoring";
 import AdminStats from "@/components/AdminStats";
 import TeamsAdmin from "@/components/TeamsAdmin";
+import { QUESTIONS } from "@/lib/questions";
 
 type SortKey = "created_at" | "total_score" | "company" | "profile";
 
@@ -32,6 +33,7 @@ export default function AdminPage() {
   const [sortKey, setSortKey] = useState<SortKey>("created_at");
   const [sortDesc, setSortDesc] = useState(true);
   const [tab, setTab] = useState<"submissions" | "teams">("submissions");
+  const [detailRow, setDetailRow] = useState<Row | null>(null);
 
   // Auth gate — use getSession (reads localStorage synchronously) and also subscribe
   // to onAuthStateChange so we don't kick the user to /login during hydration races
@@ -266,8 +268,11 @@ export default function AdminPage() {
                 {sortedRows.map((r) => (
                   <tr
                     key={r.id}
-                    className="border-t"
+                    onClick={() => setDetailRow(r)}
+                    className="border-t cursor-pointer transition-colors"
                     style={{ borderColor: "var(--border-soft)", opacity: r.completed_at ? 1 : 0.55 }}
+                    onMouseEnter={(e) => (e.currentTarget.style.background = "var(--bg-alt)")}
+                    onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
                   >
                     <td className="px-3 py-3 whitespace-nowrap" style={{ color: "var(--text-mid)" }}>
                       {formatDate(r.created_at)}
@@ -321,6 +326,9 @@ export default function AdminPage() {
             </>
           )}
         </div>
+        {detailRow && (
+          <SubmissionDetailModal row={detailRow} onClose={() => setDetailRow(null)} />
+        )}
       </main>
 
       <footer className="pt-6 pb-10 text-center">
@@ -333,6 +341,100 @@ export default function AdminPage() {
           West Product Development LLC
         </Link>
       </footer>
+    </div>
+  );
+}
+
+function SubmissionDetailModal({ row, onClose }: { row: Row; onClose: () => void }) {
+  const answers = (row as Row & { answers?: Record<string, unknown> }).answers ?? {};
+  return (
+    <div
+      className="fixed inset-0 flex items-center justify-center p-4 z-50"
+      style={{ background: "rgba(30,45,66,0.6)" }}
+      onClick={onClose}
+    >
+      <div
+        className="w-full max-w-2xl rounded-2xl px-7 py-7 max-h-[85vh] overflow-y-auto"
+        style={{ background: "var(--bg-card)", border: "1px solid var(--border-soft)", boxShadow: "var(--shadow-card)" }}
+        onClick={(e) => e.stopPropagation()}
+        role="dialog"
+        aria-modal="true"
+      >
+        <div className="flex items-start justify-between mb-4">
+          <div>
+            <p className="text-[11px] tracking-[0.18em] font-semibold uppercase mb-1" style={{ color: "var(--accent)" }}>
+              {row.completed_at ? "Completed submission" : "Partial submission"}
+            </p>
+            <h2 className="text-xl font-semibold" style={{ color: "var(--navy)" }}>
+              {row.name ?? "Anonymous"} {row.company ? `· ${row.company}` : ""}
+            </h2>
+            <p className="text-xs mt-1" style={{ color: "var(--text-muted)" }}>
+              Started {new Date(row.created_at).toLocaleString()}
+              {row.completed_at ? ` · Finished ${new Date(row.completed_at).toLocaleTimeString()}` : ""}
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Close"
+            className="text-lg px-3 py-1 rounded-md"
+            style={{ color: "var(--text-muted)" }}
+          >
+            ✕
+          </button>
+        </div>
+
+        {row.completed_at ? (
+          <div className="mb-5 rounded-lg px-4 py-3 text-sm" style={{ background: "var(--bg-alt)", color: "var(--text)" }}>
+            Score <strong>{row.total_score}</strong> / 45 · Profile{" "}
+            <strong>{row.profile ? PROFILES[row.profile as keyof typeof PROFILES]?.name ?? row.profile : "—"}</strong>
+          </div>
+        ) : (
+          <div className="mb-5 rounded-lg px-4 py-3 text-sm" style={{ background: "rgba(198,123,92,0.10)", color: "#8a4a34" }}>
+            The visitor didn&apos;t finish. Below is what they answered before quitting.
+          </div>
+        )}
+
+        <ul className="flex flex-col gap-4">
+          {QUESTIONS.map((q) => {
+            const raw = answers[q.id];
+            const answered = raw !== undefined && raw !== null && raw !== "";
+            let answerLabel = "— not answered —";
+            if (answered) {
+              if (q.type === "choice") {
+                const choice = q.options.find((o) => o.score === Number(raw));
+                answerLabel = choice ? `${choice.label} (${choice.score}/3)` : String(raw);
+              } else {
+                answerLabel = String(raw);
+              }
+            }
+            return (
+              <li key={q.id} className="border-l-2 pl-3" style={{ borderColor: answered ? "var(--accent)" : "var(--border-soft)" }}>
+                <p className="text-[11px] tracking-wider uppercase mb-1" style={{ color: "var(--text-muted)" }}>
+                  {q.id} · {q.type === "choice" ? "choice" : "text"}
+                </p>
+                <p className="text-[14px] font-medium mb-1" style={{ color: "var(--navy)" }}>
+                  {q.prompt}
+                </p>
+                <p className="text-[14px]" style={{ color: answered ? "var(--text)" : "var(--text-muted)", fontStyle: answered ? "normal" : "italic" }}>
+                  {answerLabel}
+                </p>
+              </li>
+            );
+          })}
+        </ul>
+
+        {row.handoff_task && (
+          <div className="mt-5 rounded-lg px-4 py-3" style={{ background: "var(--bg-alt)" }}>
+            <p className="text-[11px] tracking-wider uppercase mb-1" style={{ color: "var(--text-muted)" }}>
+              What they&apos;d hand off
+            </p>
+            <p className="text-[14px]" style={{ color: "var(--text)" }}>
+              {row.handoff_task}
+            </p>
+          </div>
+        )}
+      </div>
     </div>
   );
 }

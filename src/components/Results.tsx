@@ -205,6 +205,20 @@ export default function Results({ result }: { result: Result }) {
           >
             Book a 30-minute call →
           </a>
+          <p
+            className="text-[12px] mt-3"
+            style={{ color: "rgba(245,243,239,0.7)" }}
+          >
+            Button not opening your mail? Email{" "}
+            <a
+              href={mailtoHref}
+              className="underline"
+              style={{ color: "#f5f3ef" }}
+            >
+              westproductdev@gmail.com
+            </a>{" "}
+            directly.
+          </p>
         </div>
       </div>
 
