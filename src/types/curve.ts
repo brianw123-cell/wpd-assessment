@@ -72,7 +72,13 @@ export type TeamRound = {
 };
 
 export type TeamView = {
-  team: { id: string; code: string; name: string | null; created_at: string };
+  team: {
+    id: string;
+    code: string;
+    name: string | null;
+    created_at: string;
+    is_demo?: boolean;
+  };
   rounds: TeamRound[];
   responses: CurveResponseRow[];
 };

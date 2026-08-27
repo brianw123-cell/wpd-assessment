@@ -27,8 +27,37 @@ const STAGE_COLORS: Record<CurveStageKey, string> = {
   complying: "#7a3a52",
 };
 
-const MIN_RESPONSES = 5;
+// Split of the old five-response wall (see docs/CHANGE_min-response-guard.md):
+// - Aggregate (distribution, scatter, stage callouts) unlocks at MIN_AGGREGATE.
+// - Verbatim notes and the C5 safety average stay locked until MIN_VERBATIM,
+//   because those are the identifying signals in a small group.
+// - Demo/seeded teams (teams.is_demo = true) skip both guards entirely —
+//   there's no real person to protect in seeded data.
+const MIN_AGGREGATE = 3;
+const MIN_VERBATIM = 5;
 const BENCHMARK_MIN = 100;
+
+// Preview-mode fake responses used when a real team has < MIN_AGGREGATE
+// responses. Distribution deliberately shows a visible Complying cluster
+// so the person setting up the team sees why chasing three more people is
+// worth it.
+const SAMPLE_RESPONSES: CurveResponseRow[] = [
+  { id: "sample-1", round_id: null, participant_hash: null, usage_score: 11, confidence_score: 5, stage: "complying", leadership_note: null, created_at: "", created_from: "sample", answers: { C5: 1 } },
+  { id: "sample-2", round_id: null, participant_hash: null, usage_score: 12, confidence_score: 4, stage: "complying", leadership_note: null, created_at: "", created_from: "sample", answers: { C5: 1 } },
+  { id: "sample-3", round_id: null, participant_hash: null, usage_score: 13, confidence_score: 6, stage: "complying", leadership_note: null, created_at: "", created_from: "sample", answers: { C5: 1 } },
+  { id: "sample-4", round_id: null, participant_hash: null, usage_score: 13, confidence_score: 12, stage: "fluent", leadership_note: null, created_at: "", created_from: "sample", answers: { C5: 2 } },
+  { id: "sample-5", round_id: null, participant_hash: null, usage_score: 11, confidence_score: 10, stage: "fluent", leadership_note: null, created_at: "", created_from: "sample", answers: { C5: 2 } },
+  { id: "sample-6", round_id: null, participant_hash: null, usage_score: 7, confidence_score: 10, stage: "experimenting", leadership_note: null, created_at: "", created_from: "sample", answers: { C5: 1 } },
+  { id: "sample-7", round_id: null, participant_hash: null, usage_score: 8, confidence_score: 9, stage: "experimenting", leadership_note: null, created_at: "", created_from: "sample", answers: { C5: 1 } },
+  { id: "sample-8", round_id: null, participant_hash: null, usage_score: 2, confidence_score: 10, stage: "willing_stalled", leadership_note: null, created_at: "", created_from: "sample", answers: { C5: 1 } },
+  { id: "sample-9", round_id: null, participant_hash: null, usage_score: 3, confidence_score: 9, stage: "willing_stalled", leadership_note: null, created_at: "", created_from: "sample", answers: { C5: 1 } },
+  { id: "sample-10", round_id: null, participant_hash: null, usage_score: 6, confidence_score: 4, stage: "unconvinced", leadership_note: null, created_at: "", created_from: "sample", answers: { C5: 1 } },
+  { id: "sample-11", round_id: null, participant_hash: null, usage_score: 1, confidence_score: 2, stage: "dread", leadership_note: null, created_at: "", created_from: "sample", answers: { C5: 0 } },
+  { id: "sample-12", round_id: null, participant_hash: null, usage_score: 12, confidence_score: 5, stage: "complying", leadership_note: null, created_at: "", created_from: "sample", answers: { C5: 1 } },
+];
+
+const VERBATIM_LOCKED_COPY =
+  "Written comments unlock at 5 responses. Below that, people are identifiable from what they wrote, and we told them their answers would stay anonymous.";
 
 type Props = {
   view: TeamViewData;
@@ -37,11 +66,9 @@ type Props = {
 
 export default function TeamView({ view, benchmark }: Props) {
   const { team, rounds, responses } = view;
+  const isDemo = !!team.is_demo;
 
   const roundsSorted = useMemo(() => [...rounds].sort((a, b) => a.round_number - b.round_number), [rounds]);
-  // Default the round selector to the latest round that actually has responses,
-  // so opening a fresh Round 2 doesn't hide the meaningful Round 1 data behind
-  // an empty screen. Falls back to the latest round if every round is empty.
   const defaultRoundId = useMemo(() => {
     const withResponses = [...roundsSorted].reverse().find((r) => r.response_count > 0);
     return withResponses?.id ?? roundsSorted[roundsSorted.length - 1]?.id ?? null;
@@ -52,8 +79,6 @@ export default function TeamView({ view, benchmark }: Props) {
     [roundsSorted, selectedRoundId]
   );
 
-  // For the retake comparison, we always compare the ACTIVE round to the
-  // round immediately before it (the natural "before" for the current view).
   const previousRound = useMemo(() => {
     if (!activeRound) return null;
     const idx = roundsSorted.findIndex((r) => r.id === activeRound.id);
@@ -69,6 +94,14 @@ export default function TeamView({ view, benchmark }: Props) {
     [responses, previousRound]
   );
 
+  const hasAggregate = isDemo || activeResponses.length >= MIN_AGGREGATE;
+  const hasVerbatim = isDemo || activeResponses.length >= MIN_VERBATIM;
+  const showSample = !hasAggregate;
+
+  // Which set of responses drives the aggregate visuals: real ones once
+  // MIN_AGGREGATE is met, sample data otherwise.
+  const aggregateResponses = hasAggregate ? activeResponses : SAMPLE_RESPONSES;
+
   const roundPicker = roundsSorted.length > 1 ? (
     <RoundPicker
       rounds={roundsSorted}
@@ -77,69 +110,74 @@ export default function TeamView({ view, benchmark }: Props) {
     />
   ) : null;
 
-  if (activeResponses.length < MIN_RESPONSES) {
-    return (
-      <div className="max-w-3xl mx-auto">
-        <TeamHeader team={team} round={activeRound} />
-        {roundPicker}
-        <div
-          className="rounded-2xl px-6 py-10 text-center"
-          style={{
-            background: "var(--bg-card)",
-            border: "1px solid var(--border-soft)",
-            boxShadow: "var(--shadow-card)",
-          }}
-        >
-          <p className="text-[11px] tracking-[0.18em] font-semibold uppercase mb-3" style={{ color: "var(--accent)" }}>
-            Not enough responses in this round yet
-          </p>
-          <h2 className="font-semibold mb-3" style={{ color: "var(--navy)", fontSize: "clamp(22px, 3vw, 28px)" }}>
-            {activeResponses.length} of {MIN_RESPONSES}
-          </h2>
-          <p className="text-[15px]" style={{ color: "var(--text-mid)" }}>
-            We render the round&apos;s roll-up once at least five people have completed it. Below that number,
-            individual answers become identifiable and the tool becomes a surveillance device.
-            {roundsSorted.length > 1 && " Use the round picker above to look at a previous round."}
-          </p>
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div className="max-w-5xl mx-auto">
       <TeamHeader team={team} round={activeRound} />
       {roundPicker}
 
+      {showSample && (
+        <div
+          className="mb-4 rounded-2xl px-5 py-4"
+          style={{
+            background: "rgba(224,166,116,0.10)",
+            border: "1px solid rgba(224,166,116,0.4)",
+          }}
+        >
+          <p className="text-[11px] tracking-[0.18em] font-semibold uppercase mb-1" style={{ color: "#c67b5c" }}>
+            Preview mode
+          </p>
+          <p className="text-[14.5px] leading-snug" style={{ color: "var(--text-mid)" }}>
+            This is what your team&apos;s report will look like. You have{" "}
+            <strong style={{ color: "var(--navy)" }}>{activeResponses.length}</strong> of{" "}
+            <strong style={{ color: "var(--navy)" }}>{MIN_AGGREGATE}</strong> responses. The charts below are
+            sample data until three real people have answered.
+          </p>
+        </div>
+      )}
+
       <div className="grid md:grid-cols-2 gap-4 mb-4">
-        <Card title="Where the team is">
-          <DistributionBar responses={activeResponses} />
+        <Card title="Where the team is" sample={showSample}>
+          <DistributionBar responses={aggregateResponses} />
           <p className="mt-3 text-[13px]" style={{ color: "var(--text-muted)" }}>
-            {activeResponses.length} responses in round {activeRound?.round_number}.
+            {showSample ? (
+              <>Sample distribution across {aggregateResponses.length} hypothetical people.</>
+            ) : (
+              <>
+                {activeResponses.length} responses in round {activeRound?.round_number}.
+              </>
+            )}
           </p>
         </Card>
 
-        <Card title="Every person, plotted">
-          <ScatterPlot responses={activeResponses} />
+        <Card title="Every person, plotted" sample={showSample}>
+          <ScatterPlot responses={aggregateResponses} />
         </Card>
       </div>
 
       <div className="grid md:grid-cols-2 gap-4 mb-4">
-        <ComplyingCallout responses={activeResponses} />
-        <WillingStalledCallout responses={activeResponses} />
+        <ComplyingCallout responses={aggregateResponses} sample={showSample} />
+        <WillingStalledCallout responses={aggregateResponses} sample={showSample} />
       </div>
 
       <Card title="Psychological safety">
-        <SafetyReading responses={activeResponses} />
+        {hasVerbatim ? (
+          <SafetyReading responses={activeResponses} />
+        ) : (
+          <LockedSection copy={VERBATIM_LOCKED_COPY} atCount={activeResponses.length} />
+        )}
       </Card>
 
       <div className="mt-4">
         <Card title="What people want leadership to understand">
-          <LeadershipNotes responses={activeResponses} />
+          {hasVerbatim ? (
+            <LeadershipNotes responses={activeResponses} />
+          ) : (
+            <LockedSection copy={VERBATIM_LOCKED_COPY} atCount={activeResponses.length} />
+          )}
         </Card>
       </div>
 
-      {previousRound && activeRound && (
+      {previousRound && activeRound && hasAggregate && (
         <div className="mt-4">
           <Card title={`Movement since round ${previousRound.round_number}`}>
             <RetakeComparison
@@ -152,7 +190,7 @@ export default function TeamView({ view, benchmark }: Props) {
         </div>
       )}
 
-      {benchmark && (
+      {benchmark && hasAggregate && (
         <div className="mt-4">
           <Card title="How your team compares">
             <Benchmark
@@ -195,10 +233,7 @@ function RoundPicker({
             }}
           >
             Round {r.round_number}
-            <span
-              className="ml-1.5 tabular-nums"
-              style={{ opacity: 0.8 }}
-            >
+            <span className="ml-1.5 tabular-nums" style={{ opacity: 0.8 }}>
               ({r.response_count})
             </span>
             {r.closed_at ? (
@@ -243,20 +278,52 @@ function TeamHeader({ team, round }: { team: TeamViewData["team"]; round: TeamRo
   );
 }
 
-function Card({ title, children }: { title: string; children: React.ReactNode }) {
+function Card({
+  title,
+  children,
+  sample,
+}: {
+  title: string;
+  children: React.ReactNode;
+  sample?: boolean;
+}) {
   return (
     <div
-      className="rounded-2xl px-5 py-6 sm:px-7 sm:py-7"
+      className="rounded-2xl px-5 py-6 sm:px-7 sm:py-7 relative"
       style={{
         background: "var(--bg-card)",
         border: "1px solid var(--border-soft)",
         boxShadow: "var(--shadow-card)",
+        opacity: sample ? 0.72 : 1,
       }}
     >
-      <p className="text-[11px] tracking-[0.18em] font-semibold uppercase mb-4" style={{ color: "var(--accent)" }}>
-        {title}
-      </p>
+      <div className="flex items-center justify-between mb-4">
+        <p className="text-[11px] tracking-[0.18em] font-semibold uppercase" style={{ color: "var(--accent)" }}>
+          {title}
+        </p>
+        {sample && (
+          <span
+            className="text-[10px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded-full"
+            style={{ background: "rgba(224,166,116,0.25)", color: "#8a4a34", border: "1px solid rgba(224,166,116,0.5)" }}
+          >
+            Sample
+          </span>
+        )}
+      </div>
       {children}
+    </div>
+  );
+}
+
+function LockedSection({ copy, atCount }: { copy: string; atCount: number }) {
+  return (
+    <div className="rounded-lg px-4 py-4" style={{ background: "var(--bg-alt)", border: "1px dashed var(--border-soft)" }}>
+      <p className="text-[13.5px] leading-relaxed" style={{ color: "var(--text-mid)" }}>
+        {copy}
+      </p>
+      <p className="text-[12px] mt-2" style={{ color: "var(--text-muted)" }}>
+        {atCount} of {MIN_VERBATIM} responses so far.
+      </p>
     </div>
   );
 }
@@ -307,7 +374,6 @@ function ScatterPlot({ responses }: { responses: CurveResponseRow[] }) {
   const toX = (u: number) => pad + (u / 15) * inner;
   const toY = (c: number) => H - pad - (c / 15) * inner;
 
-  // Region boundaries (data coords)
   const xU4 = toX(4.5);
   const xU9 = toX(9.5);
   const yC5 = toY(5.5);
@@ -322,7 +388,6 @@ function ScatterPlot({ responses }: { responses: CurveResponseRow[] }) {
       {/* Willing-but-stalled region */}
       <rect x={pad} y={pad} width={xU4 - pad} height={yC5 - pad} fill="rgba(224,166,116,0.12)" />
 
-      {/* Axes */}
       <line x1={pad} y1={H - pad} x2={W - pad} y2={H - pad} stroke="var(--border-soft)" />
       <line x1={pad} y1={pad} x2={pad} y2={H - pad} stroke="var(--border-soft)" />
 
@@ -352,7 +417,7 @@ function ScatterPlot({ responses }: { responses: CurveResponseRow[] }) {
   );
 }
 
-function ComplyingCallout({ responses }: { responses: CurveResponseRow[] }) {
+function ComplyingCallout({ responses, sample }: { responses: CurveResponseRow[]; sample?: boolean }) {
   const count = responses.filter((r) => r.stage === "complying").length;
   return (
     <div
@@ -361,11 +426,15 @@ function ComplyingCallout({ responses }: { responses: CurveResponseRow[] }) {
         background: count > 0 ? "rgba(122,58,82,0.06)" : "var(--bg-card)",
         border: `1px solid ${count > 0 ? "rgba(122,58,82,0.35)" : "var(--border-soft)"}`,
         boxShadow: "var(--shadow-card)",
+        opacity: sample ? 0.72 : 1,
       }}
     >
-      <p className="text-[11px] tracking-[0.18em] font-semibold uppercase mb-2" style={{ color: "#7a3a52" }}>
-        The one to notice · Complying
-      </p>
+      <div className="flex items-center justify-between mb-2">
+        <p className="text-[11px] tracking-[0.18em] font-semibold uppercase" style={{ color: "#7a3a52" }}>
+          The one to notice · Complying
+        </p>
+        {sample && <SampleBadge />}
+      </div>
       <h3 className="font-semibold mb-2" style={{ color: "var(--navy)", fontSize: "24px" }}>
         {count} {count === 1 ? "person" : "people"}
       </h3>
@@ -378,7 +447,7 @@ function ComplyingCallout({ responses }: { responses: CurveResponseRow[] }) {
   );
 }
 
-function WillingStalledCallout({ responses }: { responses: CurveResponseRow[] }) {
+function WillingStalledCallout({ responses, sample }: { responses: CurveResponseRow[]; sample?: boolean }) {
   const count = responses.filter((r) => r.stage === "willing_stalled").length;
   return (
     <div
@@ -387,11 +456,15 @@ function WillingStalledCallout({ responses }: { responses: CurveResponseRow[] })
         background: count > 0 ? "rgba(224,166,116,0.06)" : "var(--bg-card)",
         border: `1px solid ${count > 0 ? "rgba(224,166,116,0.4)" : "var(--border-soft)"}`,
         boxShadow: "var(--shadow-card)",
+        opacity: sample ? 0.72 : 1,
       }}
     >
-      <p className="text-[11px] tracking-[0.18em] font-semibold uppercase mb-2" style={{ color: "#c67b5c" }}>
-        The cheap win · Willing but stalled
-      </p>
+      <div className="flex items-center justify-between mb-2">
+        <p className="text-[11px] tracking-[0.18em] font-semibold uppercase" style={{ color: "#c67b5c" }}>
+          The cheap win · Willing but stalled
+        </p>
+        {sample && <SampleBadge />}
+      </div>
       <h3 className="font-semibold mb-2" style={{ color: "var(--navy)", fontSize: "24px" }}>
         {count} {count === 1 ? "person" : "people"}
       </h3>
@@ -401,6 +474,17 @@ function WillingStalledCallout({ responses }: { responses: CurveResponseRow[] })
           : "Nobody is in the Willing-but-stalled quadrant. Either everyone's already tried something, or nobody wants to."}
       </p>
     </div>
+  );
+}
+
+function SampleBadge() {
+  return (
+    <span
+      className="text-[10px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded-full"
+      style={{ background: "rgba(224,166,116,0.25)", color: "#8a4a34", border: "1px solid rgba(224,166,116,0.5)" }}
+    >
+      Sample
+    </span>
   );
 }
 
@@ -472,7 +556,6 @@ function RetakeComparison({
   const prevCounts = tallyStages(previous);
   const currCounts = tallyStages(current);
 
-  // Match individuals across rounds by participant_hash
   const prevByHash = new Map<string, CurveResponseRow>();
   previous.forEach((r) => {
     if (r.participant_hash) prevByHash.set(r.participant_hash, r);
@@ -591,7 +674,6 @@ function tallyStages(responses: CurveResponseRow[]): Partial<Record<CurveStageKe
 }
 
 function pseudoJitter(id: string): { x: number; y: number } {
-  // Deterministic small jitter from the id so overlapping dots spread visibly.
   let h = 0;
   for (let i = 0; i < id.length; i++) h = (h * 31 + id.charCodeAt(i)) >>> 0;
   const jx = ((h % 100) / 100 - 0.5) * 8;
