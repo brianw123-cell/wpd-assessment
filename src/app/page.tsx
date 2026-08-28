@@ -9,7 +9,7 @@ export default function LandingPage() {
             West Product Development LLC
           </span>
           <span className="text-[11px] tracking-[0.18em] font-semibold uppercase" style={{ color: "var(--text-muted)" }}>
-            Two free tools
+            Three free tools
           </span>
         </div>
       </header>
@@ -18,7 +18,7 @@ export default function LandingPage() {
         <div className="w-full max-w-5xl mx-auto">
           <div className="text-center mb-10 sm:mb-14">
             <p className="text-[12px] tracking-[0.22em] font-medium uppercase mb-4" style={{ color: "var(--accent)" }}>
-              Two free tools from West Product Development LLC
+              Three free tools from West Product Development LLC
             </p>
             <h1
               className="font-semibold leading-[1.1] tracking-[-0.02em] mb-4"
@@ -31,7 +31,7 @@ export default function LandingPage() {
             </p>
           </div>
 
-          <div className="grid md:grid-cols-2 gap-4">
+          <div className="grid md:grid-cols-3 gap-4">
             <ProductCard
               tag="For business owners"
               title="AI Readiness for your business"
@@ -42,30 +42,54 @@ export default function LandingPage() {
             />
             <ProductCard
               tag="For teams"
+              title="Your team's AI fluency"
+              body="Twelve questions, about four minutes. Not how many tools you use — how you decide, how you check, and what you hand over."
+              detail="Managers see a roll-up, a retake sixty days later, and whether people did what they said they would."
+              cta="Take the fluency check"
+              href="/fluency"
+              secondaryCta={{ label: "See a team report →", href: "/fluency/team/demo" }}
+              variant="alt"
+            />
+            <ProductCard
+              tag="For teams"
               title="Where your team is with AI"
               body="Ten questions, about three minutes. You'll get a stage on the change curve and one honest paragraph."
               detail="If your team runs it together, a manager can see the roll-up. Individual answers are never shown to your employer."
               cta="Take the change curve"
               href="/curve"
               secondaryCta={{ label: "Set up a team →", href: "/team/new" }}
-              variant="alt"
             />
           </div>
 
-          <p className="mt-14 text-center text-xs" style={{ color: "var(--text-muted)" }}>
+          <div className="mt-8 text-center">
+            <Link
+              href="/tour"
+              className="inline-flex items-center gap-3 px-8 py-4 rounded-full font-semibold transition-transform hover:-translate-y-[1px]"
+              style={{
+                fontSize: "clamp(18px, 2.4vw, 22px)",
+                background: "var(--bg-card)",
+                color: "var(--navy)",
+                border: "2px solid var(--navy)",
+                boxShadow: "var(--shadow-card)",
+              }}
+            >
+              Take the guided tour
+              <span aria-hidden="true">→</span>
+            </Link>
+            <p className="mt-3 text-[15px]" style={{ color: "var(--text-mid)" }}>
+              All three, in order, with what a manager sees. No login.
+            </p>
+          </div>
+
+          <p className="mt-12 text-center text-xs" style={{ color: "var(--text-muted)" }}>
             Your answers land in our own database, not a third-party form service. We don&apos;t sell your
             information and we don&apos;t add you to anything you didn&apos;t ask for.
           </p>
         </div>
       </main>
 
-      <footer className="pt-4 pb-8 text-center text-xs flex flex-col gap-2" style={{ color: "var(--text-muted)" }}>
-        <span>
-          <Link href="/tour" className="underline" style={{ color: "var(--accent)" }}>
-            Take the guided tour
-          </Link>
-        </span>
-        <span>&copy; West Product Development LLC</span>
+      <footer className="pt-4 pb-8 text-center text-xs" style={{ color: "var(--text-muted)" }}>
+        &copy; West Product Development LLC
       </footer>
     </div>
   );

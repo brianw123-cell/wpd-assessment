@@ -3,6 +3,22 @@ import Link from "next/link";
 const STOPS = [
   {
     n: "1",
+    tag: "The newest one",
+    title: "Team AI fluency check",
+    body: "Twelve questions that ask nothing about how many tools you use. It measures judgment, verification and delegation, because that is what companies actually mean when they write down a definition of fluency. At the end you write one thing you will try.",
+    href: "/fluency",
+    cta: "Take the fluency check",
+  },
+  {
+    n: "2",
+    tag: "What a manager sees",
+    title: "The fluency team report",
+    body: "Twenty-two people across two rounds. The distribution moved, the weakest behavior is named, and there is a number for how many people did the thing they wrote down last time. That last number is the one leadership asks for and nobody can answer.",
+    href: "/fluency/team/demo",
+    cta: "Open the fluency report",
+  },
+  {
+    n: "3",
     tag: "What a participant sees",
     title: "Take it yourself",
     body: "Ten questions, about three minutes. It scores two things separately: how much you actually use AI, and how you feel about it.",
@@ -10,7 +26,7 @@ const STOPS = [
     cta: "Start the change curve",
   },
   {
-    n: "2",
+    n: "4",
     tag: "What a manager sees",
     title: "The team roll-up",
     body: "A seeded team of twenty-two. Look at the cluster in the lower right — people using AI daily who don't trust it. Every adoption dashboard counts them as a win.",
@@ -18,7 +34,7 @@ const STOPS = [
     cta: "Open the team view",
   },
   {
-    n: "3",
+    n: "5",
     tag: "What changes over time",
     title: "The retake",
     body: "Same team, sixty days later. Use the round buttons at the top of the team view to switch between them.",
@@ -26,7 +42,7 @@ const STOPS = [
     cta: "Open the team view",
   },
   {
-    n: "4",
+    n: "6",
     tag: "What the owner of the tool sees",
     title: "Across every team",
     body: "The view you'd have if you ran this across many companies. Sample data only.",
@@ -34,7 +50,7 @@ const STOPS = [
     cta: "Open the sample dashboard",
   },
   {
-    n: "5",
+    n: "7",
     tag: "The other tool",
     title: "AI readiness for a business",
     body: "Fifteen questions aimed at a business owner rather than a team. Different instrument, same machinery underneath.",
@@ -55,7 +71,7 @@ export default function TourPage() {
             className="font-semibold leading-[1.1] tracking-[-0.02em] mb-4"
             style={{ fontSize: "clamp(28px, 5vw, 42px)", color: "var(--navy)" }}
           >
-            Five links, in order
+            Seven links, in order
           </h1>
           <p className="text-lg leading-relaxed mb-10" style={{ color: "var(--text-mid)" }}>
             Nothing here asks for a password or an email. Go in order if you want the point of it,
