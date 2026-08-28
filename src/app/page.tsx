@@ -59,8 +59,13 @@ export default function LandingPage() {
         </div>
       </main>
 
-      <footer className="pt-4 pb-8 text-center text-xs" style={{ color: "var(--text-muted)" }}>
-        &copy; West Product Development LLC
+      <footer className="pt-4 pb-8 text-center text-xs flex flex-col gap-2" style={{ color: "var(--text-muted)" }}>
+        <span>
+          <Link href="/tour" className="underline" style={{ color: "var(--accent)" }}>
+            Take the guided tour
+          </Link>
+        </span>
+        <span>&copy; West Product Development LLC</span>
       </footer>
     </div>
   );

@@ -1,6 +1,6 @@
 "use client";
 
-import { use, useState } from "react";
+import { use, useEffect, useState } from "react";
 import Link from "next/link";
 import TeamView from "@/components/TeamView";
 import { getBenchmarkDistribution, getTeamView, openNewRound } from "@/lib/curve-queries";
@@ -16,12 +16,37 @@ export default function TeamViewPage({ params }: PageProps) {
   const [benchmark, setBenchmark] = useState<{ total: number; stages: Record<string, number> } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [probing, setProbing] = useState(true);
   const [roundDialog, setRoundDialog] = useState<
     | { kind: "confirm"; latestNumber: number; nextNumber: number }
     | { kind: "error"; message: string }
     | { kind: "busy" }
     | null
   >(null);
+
+  // Demo teams are open on purpose — they hold only fabricated seed data and
+  // exist so the tool can be handed to someone as a plain link. Try an
+  // unauthenticated read first; real teams fall through to the passphrase form.
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await getTeamView({ code, passphrase: "" });
+        if (cancelled || !res.ok) return;
+        const bench = await getBenchmarkDistribution();
+        if (cancelled) return;
+        setView(res.view);
+        setBenchmark(bench);
+      } catch {
+        // fall through to the passphrase form
+      } finally {
+        if (!cancelled) setProbing(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [code]);
 
   const handleUnlock = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -53,7 +78,9 @@ export default function TeamViewPage({ params }: PageProps) {
     <div className="flex flex-col flex-1 min-h-screen">
       <TopBar code={code} />
       <main id="main" className="flex-1 flex items-start justify-center px-4 sm:px-6 py-8 sm:py-12">
-        {!view ? (
+        {!view && probing ? (
+          <p className="text-sm" style={{ color: "var(--text-muted)" }}>Loading…</p>
+        ) : !view ? (
           <form onSubmit={handleUnlock} className="w-full max-w-md mx-auto rounded-2xl px-8 py-10" style={{ background: "var(--bg-card)", boxShadow: "var(--shadow-card)", border: "1px solid var(--border-soft)" }}>
             <p className="text-[11px] tracking-[0.18em] font-semibold uppercase mb-3" style={{ color: "var(--accent)" }}>
               Team view
