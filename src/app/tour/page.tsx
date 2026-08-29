@@ -81,7 +81,7 @@ export default function TourPage() {
               <li key={s.n}>
                 <Link
                   href={s.href}
-                  className="group flex items-center gap-4 sm:gap-6 rounded-xl px-4 sm:px-6 py-3 transition-transform hover:-translate-y-[1px]"
+                  className="group flex items-center gap-4 sm:gap-6 rounded-xl px-4 sm:px-6 py-[22px] transition-transform hover:-translate-y-[1px]"
                   style={{
                     background: "var(--bg-card)",
                     boxShadow: "var(--shadow-card)",
