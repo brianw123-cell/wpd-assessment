@@ -62,9 +62,9 @@ const STOPS = [
 export default function TourPage() {
   return (
     <div className="flex flex-col flex-1 min-h-screen">
-      <main id="main" className="flex-1 px-4 sm:px-8 py-8">
+      <main id="main" className="flex-1 px-4 sm:px-8 py-5">
         <div className="w-full max-w-6xl mx-auto">
-          <div className="flex flex-wrap items-baseline justify-between gap-x-6 gap-y-2 mb-5">
+          <div className="flex flex-wrap items-baseline justify-between gap-x-6 gap-y-2 mb-3">
             <h1
               className="font-semibold leading-tight tracking-[-0.02em]"
               style={{ fontSize: "clamp(24px, 3.4vw, 34px)", color: "var(--navy)" }}
@@ -76,7 +76,7 @@ export default function TourPage() {
             </p>
           </div>
 
-          <ol className="flex flex-col gap-2">
+          <ol className="flex flex-col gap-[6px]">
             {STOPS.map((s) => (
               <li key={s.n}>
                 <Link
@@ -124,7 +124,7 @@ export default function TourPage() {
             ))}
           </ol>
 
-          <p className="mt-5">
+          <p className="mt-3">
             <Link href="/" className="text-[15px] font-semibold underline" style={{ color: "var(--accent)" }}>
               ← West Product Development LLC
             </Link>
